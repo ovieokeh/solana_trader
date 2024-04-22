@@ -17,7 +17,7 @@ const rl = readline.createInterface({
 })
 
 console.info('Loading interactive example...')
-const client = new TelegramClient(storeSession, apiId, apiHash, {
+export const client = new TelegramClient(storeSession, apiId, apiHash, {
   connectionRetries: 5,
 })
 
@@ -41,4 +41,5 @@ await client.start({
 client.session.save()
 console.info('You are now connected.')
 
-export { client }
+export const CIELO_WALLET_BOT_TELEGRAM_ID =
+  process.env['CIELO_WALLET_BOT_TELEGRAM_ID'] || '5347402666'

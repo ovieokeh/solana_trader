@@ -4,7 +4,7 @@ import base58 from 'bs58'
 
 dotenv.config()
 
-const connection = new web3.Connection(
+const web3Connection = new web3.Connection(
   web3.clusterApiUrl('mainnet-beta'),
   'confirmed',
 )
@@ -15,4 +15,4 @@ const wallet = web3.Keypair.fromSecretKey(SECRET_KEY)
 
 console.info('Using Wallet: ', wallet.publicKey.toBase58())
 
-export { connection, wallet }
+export { web3Connection, wallet }
