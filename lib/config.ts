@@ -1,0 +1,2 @@
+export const CIELO_WALLET_BOT_TELEGRAM_ID =
+  process.env['CIELO_WALLET_BOT_TELEGRAM_ID'] || '5347402666'

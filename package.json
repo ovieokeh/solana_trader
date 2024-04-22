@@ -1,0 +1,24 @@
+{
+  "name": "solana_trader",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "bun lib/index.ts",
+    "dev": "bun --watch lib/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/bun": "latest",
+    "eslint": "^9.1.0",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.91.6",
+    "bs58": "^5.0.0",
+    "dotenv": "^16.4.5",
+    "telegram": "^2.20.15"
+  }
+}
