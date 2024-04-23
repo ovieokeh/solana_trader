@@ -1,45 +1,51 @@
 type BuyTransactionDetails = {
   quoteBought: string
-  amountQuoteBought: string
-  priceOfQuote: string
+  amountQuoteBought: number
+  priceOfQuote: number
   baseSold: string
-  amountBaseSold: string
-  valueOfTransactionInDollars: string
+  amountBaseSold: number
+  valueOfTransactionInDollars: number
 }
 
 type SellTransactionDetails = {
   quoteSold: string
-  amountQuoteSold: string
-  priceOfQuote: string
+  amountQuoteSold: number
+  priceOfQuote: number
   baseReceived: string
-  amountBaseReceived: string
-  valueOfTransactionInDollars: string
+  amountBaseReceived: number
+  valueOfTransactionInDollars: number
 }
 
 export type TransactionDetails = BuyTransactionDetails | SellTransactionDetails
-export function parseTransactionMessage(message: string): TransactionDetails {
-  const isBuyTransaction = message.startsWith('⭐️')
+export function parseTransactionMessage(
+  message: string,
+): TransactionDetails | null {
   const regex =
-    /\s*Swapped\s+([\d,]+\.?\d*)\s+#(\w+).*?\(\$([\d,]+\.?\d*)\).*?for\s+([\d,]+\.?\d*)\s+#(\w+)\s+@\s+\$([\d,]+\.?\d*)/
-  const matches = message.match(regex)
+    /Swapped ([\d,]+\.?\d*) #(\w+) \(\$([\d,]+\.?\d*)\) for ([\d,]+\.?\d*) #(\w+) @ \$([\d\.]+)/
+  const match = message.match(regex)
 
-  const formattedMessage = isBuyTransaction
-    ? {
-        quoteBought: matches?.[5] ?? '',
-        amountQuoteBought: matches?.[4]?.replace(/,/g, '') ?? '',
-        priceOfQuote: matches?.[6]?.replace(/,/g, '') ?? '',
-        baseSold: matches?.[2] ?? '',
-        amountBaseSold: matches?.[1]?.replace(/,/g, '') ?? '',
-        valueOfTransactionInDollars: matches?.[3]?.replace(/,/g, '') ?? '',
+  if (match) {
+    const isBuySignal = match[2] === 'SOL' // Check if "SOL" is the quote sold
+    if (isBuySignal) {
+      return {
+        quoteBought: match[5],
+        amountQuoteBought: parseFloat(match[4].replace(/,/g, '')),
+        priceOfQuote: parseFloat(match[6]),
+        baseSold: match[2],
+        amountBaseSold: parseFloat(match[1].replace(/,/g, '')),
+        valueOfTransactionInDollars: parseFloat(match[3].replace(/,/g, '')),
       }
-    : {
-        quoteSold: matches?.[2] ?? '',
-        amountQuoteSold: matches?.[1]?.replace(/,/g, '') ?? '',
-        priceOfQuote: matches?.[6]?.replace(/,/g, '') ?? '',
-        baseReceived: matches?.[5] ?? '',
-        amountBaseReceived: matches?.[4]?.replace(/,/g, '') ?? '',
-        valueOfTransactionInDollars: matches?.[3]?.replace(/,/g, '') ?? '',
+    } else {
+      return {
+        quoteSold: match[2],
+        amountQuoteSold: parseFloat(match[1].replace(/,/g, '')),
+        priceOfQuote: parseFloat(match[6]),
+        baseReceived: match[5],
+        amountBaseReceived: parseFloat(match[4].replace(/,/g, '')),
+        valueOfTransactionInDollars: parseFloat(match[3].replace(/,/g, '')),
       }
+    }
+  }
 
-  return formattedMessage
+  return null
 }
