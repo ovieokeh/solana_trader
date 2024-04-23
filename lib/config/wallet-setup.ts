@@ -5,7 +5,7 @@ import base58 from 'bs58'
 dotenv.config()
 
 const web3Connection = new web3.Connection(
-  web3.clusterApiUrl('mainnet-beta'),
+  process.env['SOLANA_RPC_MAINNET'] || web3.clusterApiUrl('mainnet-beta'),
   'confirmed',
 )
 const SECRET_KEY = base58.decode(
