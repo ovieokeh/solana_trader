@@ -2,8 +2,11 @@ import { TelegramClient } from 'telegram'
 import { StoreSession } from 'telegram/sessions'
 import readline from 'readline'
 import dotenv from 'dotenv'
+import { createLogger } from '../helpers/logger'
 
 dotenv.config()
+
+const log = createLogger('telegram-setup.ts')
 
 const apiId = process.env['TELEGRAM_API_ID']
   ? +process.env['TELEGRAM_API_ID']
@@ -16,7 +19,6 @@ const rl = readline.createInterface({
   output: process.stdout,
 })
 
-console.info('Loading interactive example...')
 export const client = new TelegramClient(storeSession, apiId, apiHash, {
   connectionRetries: 5,
 })
@@ -35,11 +37,11 @@ await client.start({
     new Promise((resolve) =>
       rl.question('Please enter the code you received: ', resolve),
     ),
-  onError: (err) => console.error(err),
+  onError: (err) => log(err),
 })
 
 client.session.save()
-console.info('You are now connected.')
+log('you are now connected.')
 
 export const CIELO_WALLET_BOT_TELEGRAM_ID =
   process.env['CIELO_WALLET_BOT_TELEGRAM_ID'] || '5347402666'

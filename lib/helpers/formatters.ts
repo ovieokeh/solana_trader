@@ -16,12 +16,24 @@ type SellTransactionDetails = {
   valueOfTransactionInDollars: number
 }
 
+export const isBuyTransactionDetails = (
+  transactionDetails: TransactionDetails,
+): transactionDetails is BuyTransactionDetails => {
+  return 'quoteBought' in transactionDetails
+}
+
+export const isSellTransactionDetails = (
+  transactionDetails: TransactionDetails,
+): transactionDetails is SellTransactionDetails => {
+  return 'quoteSold' in transactionDetails
+}
+
 export type TransactionDetails = BuyTransactionDetails | SellTransactionDetails
 export function parseTransactionMessage(
   message: string,
 ): TransactionDetails | null {
   const regex =
-    /Swapped ([\d,]+\.?\d*) #(\w+) \(\$([\d,]+\.?\d*)\) for ([\d,]+\.?\d*) #(\w+) @ \$([\d\.]+)/
+    /Swapped \**([\d,]+\.?\d*)\** #(\w+) \(\$([\d,]+\.?\d*)\) for \**([\d,]+\.?\d*)\** #(\w+) @ \$([\d\.]+)/
   const match = message.match(regex)
 
   if (match) {

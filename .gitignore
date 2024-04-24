@@ -1,5 +1,8 @@
-.env
-dist
-node_modules
-.bun.lockb
+data
 telegram_auth
+node_modules
+.env
+.bun.lockb
+
+## Specific to Ovie
+code-limbo.ts
