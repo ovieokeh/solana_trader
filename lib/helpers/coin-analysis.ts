@@ -90,11 +90,11 @@ async function processPromisingCoin(
     const secondTakeProfitPercentage = 5.0
 
     // Correct profit calculation logic
-    const stopLossPrice = tokenData.price * stopLossPercentage
-    const firstTakeProfitPrice = tokenData.price * firstTakeProfitPercentage
+    const stopLossPrice = TOKEN_PRICE * stopLossPercentage
+    const firstTakeProfitPrice = TOKEN_PRICE * firstTakeProfitPercentage
     // Sell 75% of the initial buy amount at the first target
     const firstTakeProfitAmount = Math.ceil(buyAmount * 0.75)
-    const secondTakeProfitPrice = tokenData.price * secondTakeProfitPercentage
+    const secondTakeProfitPrice = TOKEN_PRICE * secondTakeProfitPercentage
     // Sell remaining 25% of the initial buy amount at the second target
     const secondTakeProfitAmount = buyAmount - firstTakeProfitAmount
 
@@ -113,20 +113,19 @@ async function processPromisingCoin(
         targetPrice: firstTakeProfitPrice,
       }),
       createLimitOrder(token.address, {
-        amount: secondTakeProfitAmount,
-        targetPrice: secondTakeProfitPrice,
-      }),
-      createLimitOrder(token.address, {
         amount: buyAmount,
         targetPrice: stopLossPrice,
       }),
+      createLimitOrder(token.address, {
+        amount: secondTakeProfitAmount,
+        targetPrice: secondTakeProfitPrice,
+      }),
     ]
 
-    const resolvedLimitOrders = await Promise.all(
-      limitOrders.map((order) =>
-        order.catch((error) => log(`Limit order error: ${error.message}`)),
-      ),
-    )
+    const resolvedLimitOrders: (string | undefined)[] = []
+    for await (const order of limitOrders) {
+      resolvedLimitOrders.push(order)
+    }
 
     const completeRecord = {
       token,
@@ -178,9 +177,13 @@ export async function processTrackedCoins(
     log('checking buy criteria', tokenData.name, tokenData.symbol)
 
     if (matchesBuyCriteria(tokenData)) {
-      await processPromisingCoin(token, tokenData)
-      log('token matched buy criteria and processed')
-      return false // Token was promising and processed, remove it
+      try {
+        await processPromisingCoin(token, tokenData)
+        log('token matched buy criteria and processed')
+      } catch {
+      } finally {
+        return false // Token was promising and processed, remove it
+      }
     } else {
       log('token did not match buy criteria')
       return currentTime - token.timestamp <= oneHour // Keep token if it hasn't been there for over one hour
