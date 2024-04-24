@@ -68,7 +68,8 @@ export async function getCoinList(): Promise<Coin[]> {
     return coinsData
   } catch (error: any) {
     log('getCoinList: error fetching coin list:', error.message)
-    throw error
+    Bun.write(COINS_PATH, '[]')
+    return []
   }
 }
 
