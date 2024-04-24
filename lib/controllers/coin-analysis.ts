@@ -1,6 +1,6 @@
 import fetch from 'node-fetch'
 
-import { createLogger } from './logger'
+import { createLogger } from '../utils/logger'
 import type { EnrichedTokenData, Token } from '../types'
 import { createLimitOrder, createMarketOrder } from './trader'
 import { LAMPORTS_PER_SOL } from '@solana/web3.js'
@@ -27,7 +27,6 @@ async function enrichTokenData(
       options,
     )
     if (!response.ok) {
-      // Consider retry logic here
       log(`Response not OK, status: ${response.status}`)
       return null
     }
@@ -158,7 +157,7 @@ export async function processTrackedCoins(
   log('processing tracked coins')
 
   if (trackedCoins.length === 0) {
-    log('no tracked coins. exiting...')
+    log('no tracked coins. sleeping...')
     return []
   }
 

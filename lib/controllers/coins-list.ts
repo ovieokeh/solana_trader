@@ -1,5 +1,5 @@
 import { exec } from 'child_process'
-import { createLogger } from './logger'
+import { createLogger } from '../utils/logger'
 import { COINS_PATH } from '../config/wallet-setup'
 import type { Coin } from '../types'
 

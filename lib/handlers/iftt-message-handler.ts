@@ -1,8 +1,8 @@
 import type { NewMessageEvent } from 'telegram/events'
 import { IFTT_BOT_TELEGRAM_ID } from '../config/telegram-setup'
 import type { Token } from '../types'
-import { createLogger } from '../helpers/logger'
-import { coinListUpdater, getCoinFromSymbol } from '../helpers/coins-list'
+import { createLogger } from '../utils/logger'
+import { coinListUpdater, getCoinFromSymbol } from '../controllers/coins-list'
 
 const log = createLogger('iftt-handler.ts')
 

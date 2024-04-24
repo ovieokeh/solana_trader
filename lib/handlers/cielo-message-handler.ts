@@ -3,10 +3,10 @@ import {
   isBuyTransactionDetails,
   parseCieloTransactionMessage,
 } from '../formatters/cielo-message-formatter'
-import { createLogger } from '../helpers/logger'
+import { createLogger } from '../utils/logger'
 import { CIELO_WALLET_BOT_TELEGRAM_ID } from '../config/telegram-setup'
 import type { Token } from '../types'
-import { getCoinFromSymbol } from '../helpers/coins-list'
+import { getCoinFromSymbol } from '../controllers/coins-list'
 
 const log = createLogger('cielo-wallet-tracker.ts')
 

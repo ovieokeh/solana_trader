@@ -2,7 +2,7 @@ import { TelegramClient } from 'telegram'
 import { StoreSession } from 'telegram/sessions'
 import readline from 'readline'
 import dotenv from 'dotenv'
-import { createLogger } from '../helpers/logger'
+import { createLogger } from '../utils/logger'
 
 dotenv.config()
 

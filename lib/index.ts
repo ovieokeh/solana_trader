@@ -4,10 +4,9 @@ dotenv.config()
 import { NewMessage, NewMessageEvent } from 'telegram/events'
 import { client } from './config/telegram-setup'
 import { processCieloMessage } from './handlers/cielo-message-handler'
-import { checkWalletBalance } from './helpers/check-wallet-balance'
-import { coinListUpdater } from './helpers/coins-list'
-import { createLogger } from './helpers/logger'
-import { processTrackedCoins } from './helpers/coin-analysis'
+import { coinListUpdater } from './controllers/coins-list'
+import { createLogger } from './utils/logger'
+import { processTrackedCoins } from './controllers/coin-analysis'
 import type { Token } from './types'
 import { processIFTTMessage } from './handlers/iftt-message-handler'
 
@@ -16,8 +15,6 @@ const log = createLogger('index.ts')
 async function main() {
   try {
     await coinListUpdater()
-    const walletBalance = await checkWalletBalance()
-    log('wallet balance: ', walletBalance, 'SOL')
 
     const TRACKED_COINS: Token[] = []
 

@@ -1,7 +1,7 @@
 import fetch from 'node-fetch'
 import { Keypair, VersionedTransaction } from '@solana/web3.js'
 
-import { createLogger } from './logger'
+import { createLogger } from '../utils/logger'
 import { SOLANA_ADDRESS, wallet, web3Connection } from '../config/wallet-setup'
 import type { LimitOrderConfig, MarketOrderConfig } from '../types'
 
