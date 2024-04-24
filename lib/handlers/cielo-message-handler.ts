@@ -1,15 +1,16 @@
 import type { NewMessageEvent } from 'telegram/events'
 import {
   isBuyTransactionDetails,
-  parseTransactionMessage,
-} from '../helpers/formatters'
+  parseCieloTransactionMessage,
+} from '../formatters/cielo-message-formatter'
 import { createLogger } from '../helpers/logger'
 import { CIELO_WALLET_BOT_TELEGRAM_ID } from '../config/telegram-setup'
 import type { Token } from '../types'
 import { getCoinFromSymbol } from '../helpers/coins-list'
 
 const log = createLogger('cielo-wallet-tracker.ts')
-export const processCieloWalletEvent = async (
+
+export const processCieloMessage = async (
   event: NewMessageEvent,
   TRACKED_COINS: Token[],
 ) => {
@@ -18,15 +19,15 @@ export const processCieloWalletEvent = async (
   const isFromCieloBot =
     message.senderId?.toString() === CIELO_WALLET_BOT_TELEGRAM_ID
   if (!isFromCieloBot) {
-    log(`processCieloWalletEvent: ignoring message from ${message.senderId}`)
+    log(`processCieloMessage: ignoring message from ${message.senderId}`)
     return
   }
 
   try {
-    const transactionDetails = parseTransactionMessage(message.text)
+    const transactionDetails = parseCieloTransactionMessage(message.text)
     if (!transactionDetails) {
       log(
-        `processCieloWalletEvent: unable to parse transaction details in message from ${message.senderId}`,
+        `processCieloMessage: unable to parse transaction details in message from ${message.senderId}`,
       )
       return
     }
@@ -55,12 +56,12 @@ export const processCieloWalletEvent = async (
         `)
     } else {
       log(
-        `processCieloWalletEvent: ignoring sell transaction from ${message.senderId}`,
+        `processCieloMessage: ignoring sell transaction from ${message.senderId}`,
       )
     }
   } catch (error) {
     log(
-      `processCieloWalletEvent: error processing message from ${message.senderId}: ${error}`,
+      `processCieloMessage: error processing message from ${message.senderId}: ${error}`,
     )
   }
 }

@@ -29,7 +29,7 @@ export const isSellTransactionDetails = (
 }
 
 export type TransactionDetails = BuyTransactionDetails | SellTransactionDetails
-export function parseTransactionMessage(
+export function parseCieloTransactionMessage(
   message: string,
 ): TransactionDetails | null {
   const regex =

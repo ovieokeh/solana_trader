@@ -8,7 +8,6 @@ const log = createLogger('coins-list.ts')
 export async function updateCoinList() {
   try {
     const coinsURL = 'https://token.jup.ag/all'
-
     const curlCommand = `curl -X GET ${coinsURL} -o ${COINS_PATH}`
 
     log('updateCoinList: fetching data from Jupiter API')

@@ -5,6 +5,7 @@ import { createLogger } from '../helpers/logger'
 import { coinListUpdater, getCoinFromSymbol } from '../helpers/coins-list'
 
 const log = createLogger('iftt-handler.ts')
+
 export const processIFTTMessage = async (
   message: NewMessageEvent,
   TRACKED_COINS: Token[],
