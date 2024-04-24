@@ -3,6 +3,8 @@ import fetch from 'node-fetch'
 import { createLogger } from './logger'
 import type { EnrichedTokenData, Token } from '../types'
 import { createLimitOrder, createMarketOrder } from './trader'
+import { LAMPORTS_PER_SOL } from '@solana/web3.js'
+import { TRADE_AMOUNT_IN_SOL } from '../config/general'
 
 const log = createLogger('coin-analysis.ts')
 const BIRDEYE_API_KEY = process.env['BIRDEYE_API_KEY']
@@ -40,7 +42,7 @@ async function enrichTokenData(
 }
 
 function matchesBuyCriteria(tokenData: EnrichedTokenData): boolean {
-  const MINIMUM_LIQUIDITY_THRESHOLD = 50_000
+  const MINIMUM_LIQUIDITY_THRESHOLD = 20_000
   const MINIMUM_VIEW_INCREASE_PERCENT = 20
   const MINIMUM_WALLET_INTERACTION = 200
   const VOLUME_SPIKE_PERCENT = 200
@@ -63,14 +65,12 @@ function matchesBuyCriteria(tokenData: EnrichedTokenData): boolean {
     socialSentimentPositive,
   })
 
-  return true
-
-  // return (
-  //   volumeSpikeLastHour &&
-  //   priceSurge &&
-  //   liquidityCheck &&
-  //   socialSentimentPositive
-  // )
+  return (
+    volumeSpikeLastHour &&
+    priceSurge &&
+    liquidityCheck &&
+    socialSentimentPositive
+  )
 }
 
 async function processPromisingCoin(
@@ -78,7 +78,7 @@ async function processPromisingCoin(
   tokenData: EnrichedTokenData,
 ): Promise<void> {
   try {
-    const BUY_PRICE_SOL = Math.floor(0.005 * Math.pow(10, 9))
+    const BUY_PRICE_SOL = Math.floor(TRADE_AMOUNT_IN_SOL * LAMPORTS_PER_SOL)
     const TOKEN_PRICE = tokenData.price * Math.pow(10, tokenData.decimals)
 
     const buyAmount =
