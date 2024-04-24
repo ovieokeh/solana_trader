@@ -7,11 +7,10 @@ import type { LimitOrderConfig, MarketOrderConfig } from '../types'
 
 const log = createLogger('trader.ts')
 
-const API_BASE_URL = 'https://jup.ag/api'
 const CONTENT_TYPE_JSON = 'application/json'
-const JUPITER_QUOTE_API = `${API_BASE_URL}/v6/quote`
-const JUPITER_SWAP_API = `${API_BASE_URL}/v6/swap`
-const JUPITER_LIMIT_ORDER_API = `${API_BASE_URL}/limit/v1/createOrder`
+const JUPITER_QUOTE_API = `https://quote-api.jup.ag/v6/quote`
+const JUPITER_SWAP_API = `https://quote-api.jup.ag/v6/swap`
+const JUPITER_LIMIT_ORDER_API = `https://jup.ag/api/limit/v1/createOrder`
 
 async function fetchData(url: string, options = {}) {
   const defaultOptions = {
@@ -29,7 +28,7 @@ async function fetchData(url: string, options = {}) {
     return (await response.json()) as any
   } catch (error) {
     log(`fetchData: error - `, error)
-    throw error // Allows for specific error handling where this is called
+    throw error
   }
 }
 

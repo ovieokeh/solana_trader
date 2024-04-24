@@ -40,17 +40,13 @@ export interface EnrichedTokenData {
   address: string
   symbol: string
   name: string
-  logoURI: string
   price: number
+  decimals: number
   priceChange30mPercent: number
   priceChange1hPercent: number
-  priceChange2hPercent: number
-  priceChange4hPercent: number
-  priceChange6hPercent: number
-  priceChange8hPercent: number
-  priceChange12hPercent: number
-  priceChange24hPercent: number
-  tradingVolumeChangePercent: number
-  view30mChangePercent: number
-  uniqueView30mChangePercent: number
+  uniqueView30m: number
+  uniqueWallet30m: number
+  v1hUSD: number
+  v30mUSD: number
+  liquidity: number
 }

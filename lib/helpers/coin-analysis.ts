@@ -40,90 +40,149 @@ async function enrichTokenData(
 }
 
 function matchesBuyCriteria(tokenData: EnrichedTokenData): boolean {
-  return (
-    tokenData.priceChange6hPercent > 100 &&
-    tokenData.tradingVolumeChangePercent > 200 &&
-    tokenData.view30mChangePercent > 100 &&
-    tokenData.uniqueView30mChangePercent > 50
-  )
+  const MINIMUM_LIQUIDITY_THRESHOLD = 50_000
+  const MINIMUM_VIEW_INCREASE_PERCENT = 20
+  const MINIMUM_WALLET_INTERACTION = 200
+  const VOLUME_SPIKE_PERCENT = 200
+  const PRICE_SURGE_MIN_PERCENT = 100
+
+  const volumeSpikeLastHour =
+    tokenData.v1hUSD > tokenData.v30mUSD * (1 + VOLUME_SPIKE_PERCENT / 100)
+  const priceSurge =
+    tokenData.priceChange30mPercent > PRICE_SURGE_MIN_PERCENT ||
+    tokenData.priceChange1hPercent > PRICE_SURGE_MIN_PERCENT
+  const liquidityCheck = tokenData.liquidity > MINIMUM_LIQUIDITY_THRESHOLD
+  const socialSentimentPositive =
+    tokenData.uniqueView30m > MINIMUM_WALLET_INTERACTION &&
+    tokenData.uniqueWallet30m > MINIMUM_VIEW_INCREASE_PERCENT
+
+  log('matchesBuyCriteria', {
+    volumeSpikeLastHour,
+    priceSurge,
+    liquidityCheck,
+    socialSentimentPositive,
+  })
+
+  return true
+
+  // return (
+  //   volumeSpikeLastHour &&
+  //   priceSurge &&
+  //   liquidityCheck &&
+  //   socialSentimentPositive
+  // )
 }
 
 async function processPromisingCoin(
   token: Token,
   tokenData: EnrichedTokenData,
 ): Promise<void> {
-  const BUY_AMOUNT_SOL = 0.005
-  const buyAmount = BUY_AMOUNT_SOL / tokenData.price
+  try {
+    const BUY_PRICE_SOL = Math.floor(0.005 * Math.pow(10, 9))
+    const TOKEN_PRICE = tokenData.price * Math.pow(10, tokenData.decimals)
 
-  const stopLossPercentage = 0.85
-  const firstTakeProfitPercentage = 1.5
-  const secondTakeProfitPercentage = 5.0
+    const buyAmount =
+      BUY_PRICE_SOL / TOKEN_PRICE > 1
+        ? Math.floor(BUY_PRICE_SOL / TOKEN_PRICE)
+        : 10_000
+    const stopLossPercentage = 0.85
+    const firstTakeProfitPercentage = 1.5
+    const secondTakeProfitPercentage = 5.0
 
-  // Calculating dynamic trading parameters
-  const stopLossPrice = tokenData.price * stopLossPercentage
-  const firstTakeProfitPrice = tokenData.price * firstTakeProfitPercentage
-  // remove 75% of the initial buy amount
-  const firstTakeProfitAmount = buyAmount * 0.25
-  const secondTakeProfitPrice = tokenData.price * secondTakeProfitPercentage
-  // remove remaining 25% of the initial buy amount
-  const secondTakeProfitAmount = buyAmount * 0.75
+    // Correct profit calculation logic
+    const stopLossPrice = tokenData.price * stopLossPercentage
+    const firstTakeProfitPrice = tokenData.price * firstTakeProfitPercentage
+    // Sell 75% of the initial buy amount at the first target
+    const firstTakeProfitAmount = Math.ceil(buyAmount * 0.75)
+    const secondTakeProfitPrice = tokenData.price * secondTakeProfitPercentage
+    // Sell remaining 25% of the initial buy amount at the second target
+    const secondTakeProfitAmount = buyAmount - firstTakeProfitAmount
 
-  const resolvedMarketOrder = await createMarketOrder(token.address, {
-    amount: buyAmount,
-  })
-
-  const limitOrders = [
-    createLimitOrder(token.address, {
+    const resolvedMarketOrder = await createMarketOrder(token.address, {
       amount: buyAmount,
-      targetPrice: stopLossPrice,
-    }),
-    createLimitOrder(token.address, {
-      amount: firstTakeProfitAmount,
-      targetPrice: firstTakeProfitPrice,
-    }),
-    createLimitOrder(token.address, {
-      amount: secondTakeProfitAmount,
-      targetPrice: secondTakeProfitPrice,
-    }),
-  ]
+    })
 
-  const resolvedLimitOrders = await Promise.all(limitOrders)
+    if (!resolvedMarketOrder) {
+      log('Unable to create market order.')
+      return
+    }
 
-  const completeRecord = {
-    token,
-    tokenData,
-    stopLossPrice,
-    firstTakeProfitPrice,
-    secondTakeProfitPrice,
-    resolvedMarketOrder,
-    resolvedLimitOrders,
+    const limitOrders = [
+      createLimitOrder(token.address, {
+        amount: firstTakeProfitAmount,
+        targetPrice: firstTakeProfitPrice,
+      }),
+      createLimitOrder(token.address, {
+        amount: secondTakeProfitAmount,
+        targetPrice: secondTakeProfitPrice,
+      }),
+      createLimitOrder(token.address, {
+        amount: buyAmount,
+        targetPrice: stopLossPrice,
+      }),
+    ]
+
+    const resolvedLimitOrders = await Promise.all(
+      limitOrders.map((order) =>
+        order.catch((error) => log(`Limit order error: ${error.message}`)),
+      ),
+    )
+
+    const completeRecord = {
+      token,
+      tokenData,
+      stopLossPrice,
+      firstTakeProfitPrice,
+      secondTakeProfitPrice,
+      buyAmount,
+      resolvedMarketOrder,
+      resolvedLimitOrders,
+    }
+
+    const TRADES_REGISTER_PATH = 'data/trades.json'
+    const tradesRegister = await Bun.file(TRADES_REGISTER_PATH)
+      .json()
+      .catch(() => ({}))
+
+    await Bun.write(TRADES_REGISTER_PATH, {
+      ...tradesRegister,
+      [token.address]: completeRecord,
+    })
+  } catch (error: any) {
+    log(`ProcessPromisingCoin Error: ${error.message}`)
   }
-
-  const TRADES_REGISTER_PATH = 'data/trades.json'
-  const TRADES_REGISTER = await Bun.file(TRADES_REGISTER_PATH).json()
-
-  await Bun.write('data/trades.json', {
-    ...TRADES_REGISTER,
-    [token.address]: completeRecord,
-  })
 }
 
 export async function processTrackedCoins(
   trackedCoins: Token[],
 ): Promise<Token[]> {
+  log('processing tracked coins')
+
+  if (trackedCoins.length === 0) {
+    log('no tracked coins. exiting...')
+    return []
+  }
+
   const currentTime = Date.now()
   const oneHour = 60 * 60 * 1000 // One hour in milliseconds
 
   const remainingCoins = trackedCoins.filter(async (token) => {
+    log('processing token', token.address)
+
     const tokenData = await enrichTokenData(token.address)
     if (!tokenData) {
+      log('token data could not be fetched')
       return false // Remove token if data couldn't be fetched
     }
 
+    log('checking buy criteria', tokenData.name, tokenData.symbol)
+
     if (matchesBuyCriteria(tokenData)) {
       await processPromisingCoin(token, tokenData)
+      log('token matched buy criteria and processed')
       return false // Token was promising and processed, remove it
     } else {
+      log('token did not match buy criteria')
       return currentTime - token.timestamp <= oneHour // Keep token if it hasn't been there for over one hour
     }
   })
