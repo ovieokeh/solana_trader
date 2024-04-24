@@ -8,7 +8,7 @@ dotenv.config()
 const log = createLogger('wallet-setup.ts')
 
 const web3Connection = new web3.Connection(
-  process.env['SOLANA_RPC_MAINNET'] || web3.clusterApiUrl('mainnet-beta'),
+  web3.clusterApiUrl('mainnet-beta'),
   'confirmed',
 )
 const SECRET_KEY = base58.decode(
@@ -19,5 +19,6 @@ const wallet = web3.Keypair.fromSecretKey(SECRET_KEY)
 log('using Wallet: ', wallet.publicKey.toBase58())
 
 const COINS_PATH = 'data/coin-list.json'
+export const SOLANA_ADDRESS = 'So11111111111111111111111111111111111111112'
 
 export { web3Connection, wallet, COINS_PATH }

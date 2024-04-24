@@ -7,26 +7,34 @@ const log = createLogger('coins-list.ts')
 
 export async function updateCoinList() {
   try {
-    const coinsURL = 'https://api.raydium.io/v2/sdk/token/raydium.mainnet.json'
+    const coinsURL = 'https://token.jup.ag/all'
 
     const curlCommand = `curl -X GET ${coinsURL} -o ${COINS_PATH}`
 
-    log('updateCoinList: fetching data from Raydium API')
+    log('updateCoinList: fetching data from Jupiter API')
     return new Promise<boolean>((resolve) => {
-      exec(curlCommand, (error) => {
-        if (error) {
-          log(
-            'updateCoinList: error fetching data from Raydium API:',
-            error.message,
-          )
-          resolve(false)
-        }
-        log('updateCoinList: updated coins list from Raydium API')
-        resolve(true)
-      })
+      try {
+        exec(curlCommand, (error) => {
+          if (error) {
+            log(
+              'updateCoinList: error fetching data from Jupiter API:',
+              error.message,
+            )
+            resolve(false)
+          }
+          log('updateCoinList: updated coins list from Jupiter API')
+          resolve(true)
+        })
+      } catch (error: any) {
+        log(
+          'updateCoinList: error fetching data from Jupiter API:',
+          error.message,
+        )
+        resolve(false)
+      }
     })
   } catch (error: any) {
-    log('updateCoinList: error fetching data from Raydium API:', error.message)
+    log('updateCoinList: error fetching data from Jupiter API:', error.message)
     throw error
   }
 }
@@ -53,13 +61,12 @@ export async function getCoinList(): Promise<Coin[]> {
     const coinsRaw = Bun.file(COINS_PATH)
     const coinsData = await coinsRaw?.json?.()
 
-    if (!coinsData.official || !coinsData.unOfficial) {
+    if (!coinsData || !coinsData?.length) {
       log('getCoinList: coin list not found')
       return []
     }
 
-    const parsedCoins = [...coinsData.official, ...coinsData.unOfficial]
-    return parsedCoins
+    return coinsData
   } catch (error: any) {
     log('getCoinList: error fetching coin list:', error.message)
     throw error

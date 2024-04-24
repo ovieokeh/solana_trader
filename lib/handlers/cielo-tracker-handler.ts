@@ -5,20 +5,21 @@ import {
 } from '../helpers/formatters'
 import { createLogger } from '../helpers/logger'
 import { CIELO_WALLET_BOT_TELEGRAM_ID } from '../config/telegram-setup'
-import { jupiterTrader } from './jupiter-trader'
+import type { Token } from '../types'
+import { getCoinFromSymbol } from '../helpers/coins-list'
 
 const log = createLogger('cielo-wallet-tracker.ts')
-export const processCieloWalletEvent = async (event: NewMessageEvent) => {
+export const processCieloWalletEvent = async (
+  event: NewMessageEvent,
+  TRACKED_COINS: Token[],
+) => {
   const message = event.message
 
   const isFromCieloBot =
     message.senderId?.toString() === CIELO_WALLET_BOT_TELEGRAM_ID
   if (!isFromCieloBot) {
-    log(
-      `processCieloWalletEvent: ignoring message from ${message.senderId}`,
-      message.text,
-    )
-    // return
+    log(`processCieloWalletEvent: ignoring message from ${message.senderId}`)
+    return
   }
 
   try {
@@ -30,14 +31,28 @@ export const processCieloWalletEvent = async (event: NewMessageEvent) => {
       return
     }
 
-    log(
-      `processCieloWalletEvent: parsed transaction details in message from ${message.senderId}:`,
-      transactionDetails,
-    )
-
     const isBuyTransaction = isBuyTransactionDetails(transactionDetails)
     if (isBuyTransaction) {
-      await jupiterTrader(transactionDetails.quoteBought)
+      const coinDetails = await getCoinFromSymbol(
+        transactionDetails.quoteBought,
+      )
+      if (!coinDetails || !coinDetails.address) {
+        log('coin not found', transactionDetails.quoteBought)
+        return
+      }
+
+      if (TRACKED_COINS.find((c) => c.address === coinDetails.address)) {
+        log('coin already being tracked', transactionDetails.quoteBought)
+        return
+      }
+
+      TRACKED_COINS.push({
+        address: coinDetails.address,
+        timestamp: Date.now(),
+      })
+
+      log(`tracked coin ${transactionDetails.quoteBought} from ${message.senderId}
+        `)
     } else {
       log(
         `processCieloWalletEvent: ignoring sell transaction from ${message.senderId}`,

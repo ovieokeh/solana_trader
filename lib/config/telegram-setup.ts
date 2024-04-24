@@ -45,3 +45,6 @@ log('you are now connected.')
 
 export const CIELO_WALLET_BOT_TELEGRAM_ID =
   process.env['CIELO_WALLET_BOT_TELEGRAM_ID'] || '5347402666'
+
+export const IFTT_BOT_TELEGRAM_ID =
+  process.env['IFTT_BOT_TELEGRAM_ID'] || '240044026'
