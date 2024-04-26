@@ -22,7 +22,7 @@ export const processIFTTMessage = async (
   const messageText = message.message.text
   log('IFTT message:', messageText, TRACKED_COINS.length)
 
-  if (!messageText.includes('Trending New TVL')) {
+  if (!messageText.includes('New TVL')) {
     log('not a TVL message')
     return
   }

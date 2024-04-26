@@ -173,7 +173,7 @@ export async function processTrackedCoins(
       return false // Remove token if data couldn't be fetched
     }
 
-    log('checking buy criteria', tokenData.name, tokenData.symbol)
+    log('checking buy criteria', tokenData.symbol, tokenData.address)
 
     if (matchesBuyCriteria(tokenData)) {
       try {

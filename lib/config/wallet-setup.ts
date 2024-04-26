@@ -8,7 +8,7 @@ dotenv.config()
 const log = createLogger('wallet-setup.ts')
 
 const web3Connection = new web3.Connection(
-  web3.clusterApiUrl('mainnet-beta'),
+  process.env['SOLANA_RPC_URL'] || web3.clusterApiUrl('mainnet-beta'),
   'confirmed',
 )
 const SECRET_KEY = base58.decode(

@@ -39,20 +39,25 @@ export async function updateCoinList() {
 }
 
 export async function coinListUpdater(force?: boolean) {
-  const currentList = await getCoinList()
+  try {
+    const currentList = await getCoinList()
 
-  if (currentList.length && !force) {
-    log('coinListUpdater: skipping coins list update (list already exists)')
-    return
-  }
+    if (currentList.length && !force) {
+      log('coinListUpdater: skipping coins list update (list already exists)')
+      return
+    }
 
-  log('coinListUpdater: starting coin list updater')
-  await updateCoinList()
-
-  const time = 10 * 60 * 1000 // 10 minutes
-  setInterval(async () => {
+    log('coinListUpdater: starting coin list updater')
     await updateCoinList()
-  }, time)
+
+    const time = 10 * 60 * 1000 // 10 minutes
+    setInterval(async () => {
+      await updateCoinList()
+    }, time)
+  } catch (error: any) {
+    log('coinListUpdater: error updating coin list:', error.message)
+    await updateCoinList()
+  }
 }
 
 export async function getCoinList(): Promise<Coin[]> {
@@ -68,7 +73,6 @@ export async function getCoinList(): Promise<Coin[]> {
     return coinsData
   } catch (error: any) {
     log('getCoinList: error fetching coin list:', error.message)
-    Bun.write(COINS_PATH, '[]')
     return []
   }
 }
