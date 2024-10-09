@@ -1,4 +1,4 @@
-data
+data/coin-list.json
 telegram_auth
 node_modules
 .env

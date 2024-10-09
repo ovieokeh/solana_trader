@@ -2,7 +2,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import { NewMessage, NewMessageEvent } from 'telegram/events'
-import { client } from './config/telegram-setup'
+import { client as telegram } from './config/telegram-setup'
 import { processCieloMessage } from './handlers/cielo-message-handler'
 import { coinListUpdater } from './controllers/coins-list'
 import { createLogger } from './utils/logger'
@@ -22,7 +22,7 @@ async function main() {
       processCieloMessage(event, TRACKED_COINS)
       processIFTTMessage(event, TRACKED_COINS)
     }
-    client.addEventHandler(newMessageHandler, new NewMessage({}))
+    telegram.addEventHandler(newMessageHandler, new NewMessage({}))
     log('listening for new messages')
 
     const thirtySeconds = 30 * 1000
