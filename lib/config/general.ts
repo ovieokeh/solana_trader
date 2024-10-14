@@ -1,2 +1,5 @@
 export const TRADE_AMOUNT_IN_SOL = 0.01 // 0.01 SOL
 export const TRADE_SLIPPAGE_BPS = 500 // 0.5%
+export const STOP_LOSS_PERCENTAGE = 0.85 // 85%
+export const FIRST_TAKE_PROFIT_PERCENTAGE = 1.5 // 150%
+export const SECOND_TAKE_PROFIT_PERCENTAGE = 2.5 // 250%

@@ -1,11 +1,17 @@
-import { LAMPORTS_PER_SOL } from '@solana/web3.js'
+import BigNumber from 'bignumber.js'
 
 import type { Token, TokenDetailsWithExtendedPrice } from '../types'
-import { TRADE_AMOUNT_IN_SOL } from '../config/general'
+import {
+  FIRST_TAKE_PROFIT_PERCENTAGE,
+  SECOND_TAKE_PROFIT_PERCENTAGE,
+  STOP_LOSS_PERCENTAGE,
+  TRADE_AMOUNT_IN_SOL,
+} from '../config/general'
 import { createLogger } from '../utils/logger'
 
 import { createLimitOrder, createMarketOrder } from './trader'
 import { fetchTokenDetails, fetchTokenPrice } from '../utils/jupiter-ag'
+import { SOLANA_ADDRESS } from '../config/wallet-setup'
 
 const log = createLogger('coin-analysis.ts')
 
@@ -21,30 +27,50 @@ async function processPromisingCoin(
   tokenData: TokenDetailsWithExtendedPrice,
 ): Promise<void> {
   try {
-    const BUY_PRICE_SOL = Math.floor(TRADE_AMOUNT_IN_SOL * LAMPORTS_PER_SOL)
-    const TOKEN_PRICE =
-      +tokenData.priceData.price * Math.pow(10, tokenData.decimals)
+    const solanaCurrentPrice = await fetchTokenPrice(SOLANA_ADDRESS) // Fetch current SOL price in USD
+    const SOL_USD_PRICE = new BigNumber(solanaCurrentPrice?.price ?? '0')
 
-    const buyAmount =
-      BUY_PRICE_SOL / TOKEN_PRICE > 1
-        ? Math.floor(BUY_PRICE_SOL / TOKEN_PRICE)
-        : 10_000
-    const stopLossPercentage = 0.85
-    const firstTakeProfitPercentage = 1.5
-    const secondTakeProfitPercentage = 2.5
+    if (SOL_USD_PRICE.isZero()) {
+      log('Error: SOL price is zero or could not be fetched.')
+      return
+    }
 
-    // Correct profit calculation logic
-    const stopLossPrice = TOKEN_PRICE * stopLossPercentage
-    const firstTakeProfitPrice = TOKEN_PRICE * firstTakeProfitPercentage
-    // Sell 75% of the initial buy amount at the first target
-    const firstTakeProfitAmount = Math.ceil(buyAmount * 0.75)
-    const secondTakeProfitPrice = TOKEN_PRICE * secondTakeProfitPercentage
-    // Sell remaining 25% of the initial buy amount at the second target
-    const secondTakeProfitAmount = buyAmount - firstTakeProfitAmount
+    const BUY_PRICE_USD = new BigNumber(TRADE_AMOUNT_IN_SOL).multipliedBy(
+      SOL_USD_PRICE,
+    )
+    const TOKEN_PRICE = +tokenData.priceData.price // Price per token in USD
 
-    const resolvedMarketOrder = await createMarketOrder(token.address, {
-      amount: buyAmount,
-    })
+    const buyAmount = new BigNumber(BUY_PRICE_USD).dividedBy(TOKEN_PRICE)
+    const adjustedBuyAmount = buyAmount.multipliedBy(
+      new BigNumber(10).pow(tokenData.decimals),
+    )
+
+    const stopLossPrice = new BigNumber(TOKEN_PRICE).multipliedBy(
+      STOP_LOSS_PERCENTAGE,
+    )
+    const firstTakeProfitPrice = new BigNumber(TOKEN_PRICE).multipliedBy(
+      FIRST_TAKE_PROFIT_PERCENTAGE,
+    )
+    const secondTakeProfitPrice = new BigNumber(TOKEN_PRICE).multipliedBy(
+      SECOND_TAKE_PROFIT_PERCENTAGE,
+    )
+
+    const firstTakeProfitAmount = adjustedBuyAmount
+      .multipliedBy(0.75)
+      .integerValue(BigNumber.ROUND_CEIL)
+    const secondTakeProfitAmount = adjustedBuyAmount.minus(
+      firstTakeProfitAmount,
+    )
+
+    let resolvedMarketOrder
+    try {
+      resolvedMarketOrder = await createMarketOrder(token.address, {
+        amount: +adjustedBuyAmount.toFixed(0),
+      })
+    } catch (error) {
+      log('Error creating market order:', error)
+      return
+    }
 
     if (!resolvedMarketOrder) {
       log('Unable to create market order.')
@@ -53,22 +79,28 @@ async function processPromisingCoin(
 
     const limitOrders = [
       createLimitOrder(token.address, {
-        amount: firstTakeProfitAmount,
-        targetPrice: firstTakeProfitPrice,
+        amount: +firstTakeProfitAmount.toFixed(0),
+        targetPrice: +firstTakeProfitPrice,
       }),
       createLimitOrder(token.address, {
-        amount: buyAmount,
-        targetPrice: stopLossPrice,
+        amount: +adjustedBuyAmount.toFixed(0),
+        targetPrice: +stopLossPrice,
       }),
       createLimitOrder(token.address, {
-        amount: secondTakeProfitAmount,
-        targetPrice: secondTakeProfitPrice,
+        amount: +secondTakeProfitAmount.toFixed(0),
+        targetPrice: +secondTakeProfitPrice,
       }),
     ]
 
     const resolvedLimitOrders: (string | undefined)[] = []
-    for await (const order of limitOrders) {
-      resolvedLimitOrders.push(order)
+    for (const orderPromise of limitOrders) {
+      try {
+        const order = await orderPromise
+        resolvedLimitOrders.push(order)
+      } catch (error) {
+        log('Error creating limit order:', error)
+        resolvedLimitOrders.push(undefined)
+      }
     }
 
     const completeRecord = {
@@ -77,23 +109,30 @@ async function processPromisingCoin(
       stopLossPrice,
       firstTakeProfitPrice,
       secondTakeProfitPrice,
-      buyAmount,
+      buyAmount: adjustedBuyAmount.toFixed(0),
       resolvedMarketOrder,
       resolvedLimitOrders,
     }
 
     const TRADES_REGISTER_PATH = 'data/trades.json'
-    const tradesRegister = await Bun.file(TRADES_REGISTER_PATH)
-      .json()
-      .catch(() => ({}))
+    let tradesRegister = {}
+    try {
+      tradesRegister = await Bun.file(TRADES_REGISTER_PATH).json()
+    } catch (error) {
+      log('Error reading trades register:', error)
+    }
 
-    await Bun.write(
-      TRADES_REGISTER_PATH,
-      JSON.stringify({
-        ...tradesRegister,
-        [token.address]: completeRecord,
-      }),
-    )
+    try {
+      await Bun.write(
+        TRADES_REGISTER_PATH,
+        JSON.stringify({
+          ...tradesRegister,
+          [token.address]: completeRecord,
+        }),
+      )
+    } catch (error) {
+      log('Error writing to trades register:', error)
+    }
   } catch (error: any) {
     log(`ProcessPromisingCoin Error: ${error.message}`)
   }
@@ -109,7 +148,9 @@ export async function processTrackedCoins(
     return []
   }
 
-  for await (const token of trackedCoins) {
+  const tokensToRemove: Token[] = []
+
+  for (const token of trackedCoins) {
     log('processing token', token.address)
 
     const [baseTokenDetailsQuery, tokenPriceDataQuery] =
@@ -120,23 +161,27 @@ export async function processTrackedCoins(
 
     if (baseTokenDetailsQuery.status === 'rejected') {
       log('token data could not be fetched')
-      removeTrackedCoin(trackedCoins, token)
+      tokensToRemove.push(token)
       continue
     }
     if (tokenPriceDataQuery.status === 'rejected') {
       log('token price data could not be fetched')
-      removeTrackedCoin(trackedCoins, token)
+      tokensToRemove.push(token)
       continue
     }
 
     const baseTokenDetails = baseTokenDetailsQuery.value
     const tokenPriceData = tokenPriceDataQuery.value
-    if (!baseTokenDetails || !tokenPriceData) {
-      log('token data or price data not found', {
+    if (
+      !baseTokenDetails ||
+      !tokenPriceData?.price ||
+      !baseTokenDetails.decimals
+    ) {
+      log('invalid token data or token data not found', {
         baseTokenDetails,
         tokenPriceData,
       })
-      removeTrackedCoin(trackedCoins, token)
+      tokensToRemove.push(token)
       continue
     }
 
@@ -150,12 +195,16 @@ export async function processTrackedCoins(
     try {
       await processPromisingCoin(token, tokenData)
       log('token matched buy criteria and processed')
-      removeTrackedCoin(trackedCoins, token)
+      tokensToRemove.push(token)
     } catch (error: any) {
       log('unhandled error processing promising coin:', error.message)
     } finally {
       continue
     }
+  }
+
+  for (const tokenToRemove of tokensToRemove) {
+    removeTrackedCoin(trackedCoins, tokenToRemove)
   }
 
   return Promise.all(trackedCoins)
