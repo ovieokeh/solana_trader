@@ -1,18 +1,4 @@
-# solana_trader
-
-To install dependencies:
-
-```bash
-bun install
-```
-
-To run:
-
-```bash
-npm run dev
-```
-
-## What is this project about?
+# What is this project about?
 
 This project is a simple trading bot that uses a combination of the [Jupiter API](https://station.jup.ag/docs/apis/), [Cielo Wallet Tracker](https://app.cielo.finance/), [Telegram](https://telegram.org/), and the [Solana blockchain](https://solana.com/) to copy trades from insider wallets to your own wallet.
 
@@ -96,13 +82,15 @@ The method I'm using is as follows
 
 - Go to [BirdEye.so](https://birdeye.so/) and look for trending tokens with good volume and a disgusting price increase in the last hour.
 
+- Once you find a token, view the trades of the token and filter by date/time to see the first trades.
+
 ![Example BirdEye Filter Trades](./imgs/example-birdeye-filter-trades.png)
 
-- Once you find a token, view the trades of the token and filter by date/time to see the first trades.
+- Go through wallets with manual looking prices and go back to [Cielo Wallet Tracker](https://app.cielo.finance/) to see the trades of the wallet.
 
 ![Example Promising Wallet](./imgs/example-birdeye-promising-wallet.png)
 
-- Go through wallets with manual looking prices and go back to [Cielo Wallet Tracker](https://app.cielo.finance/) to see the trades of the wallet.
+- If the wallet has a good history of getting in early and getting out at the right time, add it to your Cielo tracker (Make sure the tracker is active and linked to your Telegram account)
 
 ![Example Cielo Analysis](./imgs/example-cielo-activity-analysis.png)
 
@@ -112,14 +100,10 @@ In the example above,
 - The wallet sold 7.53M `croc *` at 14 Oct, 15:35 at the price of `$0.03943` per `croc *`
 - The wallet made a profit of approximately `$43,000` in 2 days and 14 hours
 
-If you see a wallet consistently making trades like this, add it to your Cielo tracker.
-
-- If the wallet has a good history of getting in early and getting out at the right time, add it to your Cielo tracker (Make sure the tracker is active and linked to your Telegram account)
+This is a bit tedious but it's worth it in the long run. You only need a few wallets to make a lot of money. The only downside is that insiders tend to change wallets frequently so you need to keep an eye on them.
 
 Tip:
 Look at the activity history, the price at which they bought the token, the price at which they sold the token, and the time it took them to make the trade. If they consistently make good trades, add them to your Cielo tracker.
-
-This is a bit tedious but it's worth it in the long run. You only need a few wallets to make a lot of money. The only downside is that insiders tend to change wallets frequently so you need to keep an eye on them.
 
 ### Step 5: Run the project
 
