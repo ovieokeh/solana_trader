@@ -1,5 +1,8 @@
 import type { NewMessageEvent } from 'telegram/events'
-import { isBuyMessage, parseMessage } from '../formatters/cielo-message-parser'
+import {
+  isBuyMessage,
+  parseMessage,
+} from '../message-parsers/cielo-message-parser'
 import { createLogger } from '../utils/logger'
 import { CIELO_WALLET_BOT_TELEGRAM_ID } from '../config/telegram-setup'
 import type { Token } from '../types'

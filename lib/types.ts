@@ -6,34 +6,10 @@ export interface Coin {
   decimals: number
   chainId?: number
 }
-export interface ValidCoin {
-  name: string
-  symbol: string
-  address: string
-  decimals: number
-  chainId?: number
-}
-
-export interface CoinPriceData {
-  value: number
-  updateUnixTime: number
-  updateHumanTime: string
-  priceChange24h: number
-  liquidity: number
-}
 
 export interface Token {
   address: string
   timestamp: number // The timestamp when the token was added for tracking
-}
-
-export interface MarketOrderConfig {
-  amount: number
-}
-
-export interface LimitOrderConfig {
-  amount: number
-  targetPrice: number
 }
 
 export interface BaseTokenDetails {
@@ -42,6 +18,15 @@ export interface BaseTokenDetails {
   name: string
   decimals: number
   dailyVolume?: number
+}
+
+export interface JupiterMarketOrderConfig {
+  amount: number
+}
+
+export interface JupiterLimitOrderConfig {
+  amount: number
+  targetPrice: number
 }
 
 export interface JupiterExtendedPriceData {
@@ -83,44 +68,4 @@ export interface JupiterExtendedPriceData {
 
 export interface TokenDetailsWithExtendedPrice extends BaseTokenDetails {
   priceData: JupiterExtendedPriceData
-}
-
-export interface TokenDetailsWithPrice extends BaseTokenDetails {
-  price: number
-  priceMovement: BirdEyeHistoricalPriceData
-}
-
-export interface BirdEyePriceData {
-  value: number
-  updateUnixTime: number
-  updateHumanTime: string
-}
-
-export interface BirdEyeHistoricalPriceData {
-  items: {
-    unixTime: number
-    value: number
-  }[]
-}
-
-export interface EnrichedSolanaFMTokenData {
-  mint: string
-  tokenName: string
-  symbol: string
-  decimals: number
-  description: string
-  logo: string
-  tags: string[]
-  verified: string
-  network: string[]
-  metadataToken: string
-}
-
-export interface SolanaFMSupplyData {
-  circulatingSupply: number
-  tokenWithheldAmount: number
-  userTotalWithheldAmount: number
-  totalWithheldAmount: number
-  realCirculatingSupply: number
-  decimals: number
 }

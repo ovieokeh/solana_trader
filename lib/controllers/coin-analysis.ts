@@ -5,36 +5,15 @@ import { TRADE_AMOUNT_IN_SOL } from '../config/general'
 import { createLogger } from '../utils/logger'
 
 import { createLimitOrder, createMarketOrder } from './trader'
-import { fetchTokenDetails, fetchTokenPrice } from './apis/jupiter-ag'
+import { fetchTokenDetails, fetchTokenPrice } from '../utils/jupiter-ag'
 
 const log = createLogger('coin-analysis.ts')
 
-function matchesBuyCriteria(
-  enrichedToken: TokenDetailsWithExtendedPrice,
-): boolean {
-  // price data comes in chunks of 15 minutes
-  // we want an increase of at least 150 points in the last 1 hour
-  return true
-  // const PRICE_DIFFERENCE_THRESHOLD = 150
-
-  // const priceData = enrichedToken.priceMovement.items
-  // const priceDataLength = priceData.length
-
-  // if (priceDataLength < 5) {
-  //   return false
-  // }
-
-  // // we want to consider only the last 1 hour of data
-  // const lastHourData = priceData.slice(priceDataLength - 5)
-  // const priceDifference =
-  //   lastHourData[lastHourData.length - 1].value - lastHourData[0].value
-  // const priceDifferencePercentage =
-  //   (priceDifference / lastHourData[0].value) * 100
-
-  // return (
-  //   priceDifference > PRICE_DIFFERENCE_THRESHOLD &&
-  //   priceDifferencePercentage > 0
-  // )
+const removeTrackedCoin = (trackedCoins: Token[], token: Token) => {
+  const indexOfToken = trackedCoins.findIndex(
+    (coin) => coin.address === token.address,
+  )
+  trackedCoins.splice(indexOfToken, 1)
 }
 
 async function processPromisingCoin(
@@ -52,7 +31,7 @@ async function processPromisingCoin(
         : 10_000
     const stopLossPercentage = 0.85
     const firstTakeProfitPercentage = 1.5
-    const secondTakeProfitPercentage = 5.0
+    const secondTakeProfitPercentage = 2.5
 
     // Correct profit calculation logic
     const stopLossPrice = TOKEN_PRICE * stopLossPercentage
@@ -108,10 +87,13 @@ async function processPromisingCoin(
       .json()
       .catch(() => ({}))
 
-    await Bun.write(TRADES_REGISTER_PATH, {
-      ...tradesRegister,
-      [token.address]: completeRecord,
-    })
+    await Bun.write(
+      TRADES_REGISTER_PATH,
+      JSON.stringify({
+        ...tradesRegister,
+        [token.address]: completeRecord,
+      }),
+    )
   } catch (error: any) {
     log(`ProcessPromisingCoin Error: ${error.message}`)
   }
@@ -127,11 +109,7 @@ export async function processTrackedCoins(
     return []
   }
 
-  const currentTime = Date.now()
-  const oneHour = 60 * 60 * 1000 // One hour in milliseconds
-
-  const remainingCoins = trackedCoins
-  for await (const token of remainingCoins) {
+  for await (const token of trackedCoins) {
     log('processing token', token.address)
 
     const [baseTokenDetailsQuery, tokenPriceDataQuery] =
@@ -142,14 +120,12 @@ export async function processTrackedCoins(
 
     if (baseTokenDetailsQuery.status === 'rejected') {
       log('token data could not be fetched')
-      remainingCoins.filter((coin) => coin.address !== token.address)
-
+      removeTrackedCoin(trackedCoins, token)
       continue
     }
     if (tokenPriceDataQuery.status === 'rejected') {
       log('token price data could not be fetched')
-      remainingCoins.filter((coin) => coin.address !== token.address)
-
+      removeTrackedCoin(trackedCoins, token)
       continue
     }
 
@@ -160,7 +136,7 @@ export async function processTrackedCoins(
         baseTokenDetails,
         tokenPriceData,
       })
-      remainingCoins.filter((coin) => coin.address !== token.address)
+      removeTrackedCoin(trackedCoins, token)
       continue
     }
 
@@ -171,22 +147,16 @@ export async function processTrackedCoins(
 
     log('checking buy criteria', tokenData.symbol, tokenData.address)
 
-    if (matchesBuyCriteria(tokenData)) {
-      try {
-        await processPromisingCoin(token, tokenData)
-        log('token matched buy criteria and processed')
-      } catch (error: any) {
-        log('unhandled error processing promising coin:', error.message)
-      } finally {
-        continue
-      }
-    } else {
-      log('token did not match buy criteria')
-      if (currentTime - token.timestamp <= oneHour) {
-        remainingCoins.push(token)
-      } // Keep token if it hasn't been there for over one hour
+    try {
+      await processPromisingCoin(token, tokenData)
+      log('token matched buy criteria and processed')
+      removeTrackedCoin(trackedCoins, token)
+    } catch (error: any) {
+      log('unhandled error processing promising coin:', error.message)
+    } finally {
+      continue
     }
   }
 
-  return Promise.all(remainingCoins)
+  return Promise.all(trackedCoins)
 }

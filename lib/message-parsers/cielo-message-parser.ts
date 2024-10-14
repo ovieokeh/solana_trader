@@ -16,30 +16,12 @@ export interface SwapMessage extends Message {
   price: number
 }
 
-export interface TransferMessage extends Message {
-  type: 'transfer'
-  amount: number
-  token: string
-  usdValue: number
-  recipient: string
-}
-
-export interface ReceiveMessage extends Message {
-  type: 'receive'
-  amount: number
-  token: string
-  usdValue: number
-  senderAddress: string
-}
-
-type ParsedMessage = SwapMessage | TransferMessage | ReceiveMessage
-
 /**
- * Parses a Telegram message and returns a ParsedMessage object.
+ * Parses a Telegram message and returns a SwapMessage object.
  * @param rawMessage The raw message text.
- * @returns A ParsedMessage object.
+ * @returns A SwapMessage object.
  */
-function parseMessage(rawMessage: string): ParsedMessage | null {
+function parseMessage(rawMessage: string): SwapMessage | null {
   const lines = rawMessage
     .trim()
     .split('\n')
@@ -54,15 +36,8 @@ function parseMessage(rawMessage: string): ParsedMessage | null {
   if (!senderMatch) return null
   const sender = senderMatch[0]
 
-  if (messageLine.includes('Swapped')) {
-    return parseSwapMessage(sender, messageLine, addressLine)
-  } else if (messageLine.includes('Transferred:')) {
-    return parseTransferMessage(sender, messageLine)
-  } else if (messageLine.includes('Received:')) {
-    return parseReceiveMessage(sender, messageLine)
-  } else {
-    return null
-  }
+  if (!messageLine.includes('Swapped')) return null
+  return parseSwapMessage(sender, messageLine, addressLine)
 }
 
 /**
@@ -153,68 +128,8 @@ function parseSwapMessage(
   }
 }
 
-/**
- * Parses a transfer message.
- * @param sender The sender address.
- * @param message The message text.
- * @returns A TransferMessage object.
- */
-function parseTransferMessage(
-  sender: string,
-  message: string,
-): TransferMessage | null {
-  const transferRegex =
-    /^Transferred: (\d[\d,\.]*) (#[A-Za-z0-9]+) \(\$(\d[\d,\.]*)\) to ([A-Za-z0-9\.]{4,})/
-  const match = message.match(transferRegex)
-  if (!match) return null
-
-  const [_, amountStr, token, usdValueStr, recipient] = match
-
-  return {
-    sender,
-    type: 'transfer',
-    amount: parseFloat(amountStr.replace(/,/g, '')),
-    token,
-    usdValue: parseFloat(usdValueStr.replace(/,/g, '')),
-    recipient,
-  }
-}
-
-/**
- * Parses a receive message.
- * @param sender The sender address.
- * @param message The message text.
- * @returns A ReceiveMessage object.
- */
-function parseReceiveMessage(
-  sender: string,
-  message: string,
-): ReceiveMessage | null {
-  const receiveRegex =
-    /^Received: (\d[\d,\.]*) (#[A-Za-z0-9]+) \(\$(\d[\d,\.]*)\) from ([A-Za-z0-9\.]{4,})/
-  const match = message.match(receiveRegex)
-  if (!match) return null
-
-  const [_, amountStr, token, usdValueStr, senderAddress] = match
-
-  return {
-    sender,
-    type: 'receive',
-    amount: parseFloat(amountStr.replace(/,/g, '')),
-    token,
-    usdValue: parseFloat(usdValueStr.replace(/,/g, '')),
-    senderAddress,
-  }
-}
-
-const isBuyMessage = (message: ParsedMessage): message is SwapMessage =>
+const isBuyMessage = (message: any): message is SwapMessage =>
   message.type === 'swap' && message.quoteAmount > 0 && message.quote === 'SOL'
 
 // Exporting functions and types for testing and usage
-export {
-  parseMessage,
-  parseSwapMessage,
-  parseTransferMessage,
-  parseReceiveMessage,
-  isBuyMessage,
-}
+export { parseMessage, parseSwapMessage, isBuyMessage }

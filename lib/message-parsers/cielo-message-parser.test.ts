@@ -1,11 +1,7 @@
 // messageParser.test.ts
 
 import { describe, expect, test } from 'vitest'
-import type {
-  SwapMessage,
-  TransferMessage,
-  ReceiveMessage,
-} from './cielo-message-parser'
+import type { SwapMessage } from './cielo-message-parser'
 import { parseMessage } from './cielo-message-parser'
 
 describe('Message Parser', () => {
@@ -72,42 +68,6 @@ Swapped 1,391.73 #RR ($0.51) for 0.0033 #SOL @ $0.00036
     expect(parsed.baseAmount).toBeCloseTo(2889.82)
     expect(parsed.base).toBe('Berry')
     expect(parsed.price).toBeCloseTo(0.000052)
-  })
-
-  test('parses transfer message', () => {
-    const rawMessage = `
-#13H2...iGJK
-Transferred: 0.0020 #SOL ($0.31) to FqxE...Z1AN
-#solana | Cielo | ViewTx
-    `
-
-    const parsed = parseMessage(rawMessage) as TransferMessage
-
-    expect(parsed).not.toBeNull()
-    expect(parsed.type).toBe('transfer')
-    expect(parsed.sender).toBe('#13H2...iGJK')
-    expect(parsed.amount).toBeCloseTo(0.002)
-    expect(parsed.token).toBe('#SOL')
-    expect(parsed.usdValue).toBeCloseTo(0.31)
-    expect(parsed.recipient).toBe('FqxE...Z1AN')
-  })
-
-  test('parses receive message', () => {
-    const rawMessage = `
-#13H2...iGJK
-Received: 0.0020 #SOL ($0.31) from CK4E...CvS7
-#solana | Cielo | ViewTx
-    `
-
-    const parsed = parseMessage(rawMessage) as ReceiveMessage
-
-    expect(parsed).not.toBeNull()
-    expect(parsed.type).toBe('receive')
-    expect(parsed.sender).toBe('#13H2...iGJK')
-    expect(parsed.amount).toBeCloseTo(0.002)
-    expect(parsed.token).toBe('#SOL')
-    expect(parsed.usdValue).toBeCloseTo(0.31)
-    expect(parsed.senderAddress).toBe('CK4E...CvS7')
   })
 
   test('returns null for unrecognized message', () => {

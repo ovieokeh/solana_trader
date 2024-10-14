@@ -1,32 +1,37 @@
-import fetch from 'node-fetch'
+import axios from 'axios'
 import { Keypair, VersionedTransaction } from '@solana/web3.js'
 
 import { createLogger } from '../utils/logger'
 import { SOLANA_ADDRESS, wallet, web3Connection } from '../config/wallet-setup'
-import type { LimitOrderConfig, MarketOrderConfig } from '../types'
+import type {
+  JupiterLimitOrderConfig,
+  JupiterMarketOrderConfig,
+} from '../types'
+import { TRADE_SLIPPAGE_BPS } from '../config/general'
 
 const log = createLogger('trader.ts')
 
-const CONTENT_TYPE_JSON = 'application/json'
-const JUPITER_QUOTE_API = `https://quote-api.jup.ag/v6/quote`
-const JUPITER_SWAP_API = `https://quote-api.jup.ag/v6/swap`
+const JUPITER_QUOTE_API = `https://public.jupiterapi.com/quote`
+const JUPITER_SWAP_API = `https://public.jupiterapi.com/swap`
 const JUPITER_LIMIT_ORDER_API = `https://jup.ag/api/limit/v1/createOrder`
 
 async function fetchData(url: string, options = {}) {
   const defaultOptions = {
     headers: {
-      'Content-Type': CONTENT_TYPE_JSON,
+      'Content-Type': 'application/json',
     },
   }
 
   const finalOptions = { ...defaultOptions, ...options }
 
   try {
-    const response = await fetch(url, finalOptions)
-    if (!response.ok)
+    const response = await axios(url, {
+      ...finalOptions,
+    })
+    if (!response.status || response.status !== 200)
       throw new Error(`Network response was not ok: ${response.statusText}`)
-    return (await response.json()) as any
-  } catch (error) {
+    return response.data
+  } catch (error: any) {
     log(`fetchData: error - `, error)
     throw error
   }
@@ -63,13 +68,13 @@ async function processAndSendTransaction(
 
 export async function createMarketOrder(
   address: string,
-  tradeSettings: MarketOrderConfig,
+  tradeSettings: JupiterMarketOrderConfig,
 ): Promise<string | undefined> {
   try {
     log(`Trading coin: ${address} with settings`, tradeSettings)
 
     const quoteResponse = await fetchData(
-      `${JUPITER_QUOTE_API}?inputMint=${SOLANA_ADDRESS}&outputMint=${address}&amount=${tradeSettings.amount}`,
+      `${JUPITER_QUOTE_API}?inputMint=${SOLANA_ADDRESS}&outputMint=${address}&amount=${tradeSettings.amount}&slippageBps=${TRADE_SLIPPAGE_BPS}`,
       { method: 'GET' },
     )
     log('quoteResponse', quoteResponse)
@@ -81,11 +86,12 @@ export async function createMarketOrder(
 
     const swapTransactionResponse = await fetchData(JUPITER_SWAP_API, {
       method: 'POST',
-      body: JSON.stringify({
+      data: {
         quoteResponse,
         userPublicKey: wallet.publicKey.toBase58(),
         wrapAndUnwrapSol: true,
-      }),
+        prioritizationFeeLamports: 1000000, // 0.001 SOL
+      },
     })
 
     const swapTransaction = swapTransactionResponse.swapTransaction
@@ -103,7 +109,7 @@ export async function createMarketOrder(
 
 export async function createLimitOrder(
   address: string,
-  tradeSettings: LimitOrderConfig,
+  tradeSettings: JupiterLimitOrderConfig,
 ): Promise<string | undefined> {
   try {
     log(
@@ -115,7 +121,7 @@ export async function createLimitOrder(
 
     const limitOrderResponse = await fetchData(JUPITER_LIMIT_ORDER_API, {
       method: 'POST',
-      body: JSON.stringify({
+      data: JSON.stringify({
         owner: wallet.publicKey.toString(),
         inAmount: tradeSettings.amount,
         outAmount: tradeSettings.targetPrice,

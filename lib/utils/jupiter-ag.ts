@@ -1,6 +1,6 @@
 import axios from 'axios'
-import { createLogger } from '../../utils/logger'
-import type { BaseTokenDetails, JupiterExtendedPriceData } from '../../types'
+import { createLogger } from './logger'
+import type { BaseTokenDetails, JupiterExtendedPriceData } from '../types'
 
 const log = createLogger('jupiter-ag.ts')
 const JUPITER_API_URL = 'https://tokens.jup.ag'
