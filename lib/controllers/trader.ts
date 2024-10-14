@@ -37,7 +37,9 @@ async function processAndSendTransaction(
   signers: Keypair[] = [],
 ) {
   const transactionBuf = Buffer.from(txBase64, 'base64')
-  const transaction = VersionedTransaction.deserialize(transactionBuf)
+  const transaction = VersionedTransaction.deserialize(
+    new Uint8Array(transactionBuf),
+  )
   transaction.sign([wallet, ...signers])
 
   const latestBlockHash = await web3Connection.getLatestBlockhash()

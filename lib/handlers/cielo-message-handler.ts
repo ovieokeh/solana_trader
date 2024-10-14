@@ -1,12 +1,8 @@
 import type { NewMessageEvent } from 'telegram/events'
-import {
-  isBuyTransactionDetails,
-  parseCieloTransactionMessage,
-} from '../formatters/cielo-message-formatter'
+import { isBuyMessage, parseMessage } from '../formatters/cielo-message-parser'
 import { createLogger } from '../utils/logger'
 import { CIELO_WALLET_BOT_TELEGRAM_ID } from '../config/telegram-setup'
 import type { Token } from '../types'
-import { getCoinFromSymbol } from '../controllers/coins-list'
 
 const log = createLogger('cielo-wallet-tracker.ts')
 
@@ -20,39 +16,38 @@ export const processCieloMessage = async (
     message.senderId?.toString() === CIELO_WALLET_BOT_TELEGRAM_ID
   if (!isFromCieloBot) {
     log(`processCieloMessage: ignoring message from ${message.senderId}`)
-    return
+    // return
   }
 
   try {
-    const transactionDetails = parseCieloTransactionMessage(message.text)
+    const transactionDetails = parseMessage(message.text)
     if (!transactionDetails) {
       return log(
-        `processCieloMessage: unable to parse transaction details in message from ${message.senderId}`,
+        `processCieloMessage: unable to parse transaction details in message:\n \x1b[34m${message.text}\x1b[0m`,
       )
     }
 
-    const isBuyTransaction = isBuyTransactionDetails(transactionDetails)
+    const isBuyTransaction = isBuyMessage(transactionDetails)
     if (!isBuyTransaction) {
       return log(
         `processCieloMessage: ignoring sell transaction from ${message.senderId}`,
       )
     }
 
-    const coinDetails = await getCoinFromSymbol(transactionDetails.quoteBought)
-    if (!coinDetails || !coinDetails.address) {
-      return log('coin not found', transactionDetails.quoteBought)
+    if (!transactionDetails.address) {
+      return log('coin not found', transactionDetails.base)
     }
 
-    if (TRACKED_COINS.find((c) => c.address === coinDetails.address)) {
-      return log('coin already being tracked', transactionDetails.quoteBought)
+    if (TRACKED_COINS.find((c) => c.address === transactionDetails.address)) {
+      return log('coin already being tracked', transactionDetails.base)
     }
 
     TRACKED_COINS.push({
-      address: coinDetails.address,
+      address: transactionDetails.address,
       timestamp: Date.now(),
     })
 
-    log(`tracked coin ${transactionDetails.quoteBought} from ${message.senderId}
+    log(`tracked coin ${transactionDetails.quote} from ${message.senderId}
         `)
   } catch (error) {
     log(

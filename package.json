@@ -4,7 +4,8 @@
   "main": "index.js",
   "scripts": {
     "start": "bun lib/index.ts",
-    "dev": "bun --watch lib/index.ts"
+    "dev": "bun --watch lib/index.ts",
+    "test": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -17,9 +18,11 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.91.6",
+    "axios": "^1.7.7",
     "bs58": "^5.0.0",
     "dotenv": "^16.4.5",
     "node-fetch": "^3.3.2",
-    "telegram": "^2.20.15"
+    "telegram": "^2.20.15",
+    "vitest": "^2.1.3"
   }
 }

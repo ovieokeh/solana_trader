@@ -14,7 +14,7 @@ export const processIFTTMessage = async (
   const isIFTTMessage = senderId === IFTT_BOT_TELEGRAM_ID
   if (!isIFTTMessage) {
     log('processIFTTMessage: ignoring message from', senderId)
-    // return
+    return
   }
 
   await coinListUpdater(true)

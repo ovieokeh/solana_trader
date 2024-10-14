@@ -36,17 +36,91 @@ export interface LimitOrderConfig {
   targetPrice: number
 }
 
-export interface EnrichedTokenData {
+export interface BaseTokenDetails {
   address: string
   symbol: string
   name: string
-  price: number
   decimals: number
-  priceChange30mPercent: number
-  priceChange1hPercent: number
-  uniqueView30m: number
-  uniqueWallet30m: number
-  v1hUSD: number
-  v30mUSD: number
-  liquidity: number
+  dailyVolume?: number
+}
+
+export interface JupiterExtendedPriceData {
+  id: string
+  type: string
+  price: string
+  lastSwappedPrice: {
+    lastJupiterSellAt: number
+    lastJupiterSellPrice: string
+    lastJupiterBuyAt: number
+    lastJupiterBuyPrice: string
+  }
+  quotedPrice: {
+    buyPrice: string
+    buyAt: number
+    sellPrice: string
+    sellAt: number
+  }
+  confidenceLevel: string
+  depth: {
+    buyPriceImpactRatio: {
+      depth: {
+        10: number
+        100: number
+        1000: number
+      }
+      timestamp: number
+    }
+    sellPriceImpactRatio: {
+      depth: {
+        10: number
+        100: number
+        1000: number
+      }
+      timestamp: number
+    }
+  }
+}
+
+export interface TokenDetailsWithExtendedPrice extends BaseTokenDetails {
+  priceData: JupiterExtendedPriceData
+}
+
+export interface TokenDetailsWithPrice extends BaseTokenDetails {
+  price: number
+  priceMovement: BirdEyeHistoricalPriceData
+}
+
+export interface BirdEyePriceData {
+  value: number
+  updateUnixTime: number
+  updateHumanTime: string
+}
+
+export interface BirdEyeHistoricalPriceData {
+  items: {
+    unixTime: number
+    value: number
+  }[]
+}
+
+export interface EnrichedSolanaFMTokenData {
+  mint: string
+  tokenName: string
+  symbol: string
+  decimals: number
+  description: string
+  logo: string
+  tags: string[]
+  verified: string
+  network: string[]
+  metadataToken: string
+}
+
+export interface SolanaFMSupplyData {
+  circulatingSupply: number
+  tokenWithheldAmount: number
+  userTotalWithheldAmount: number
+  totalWithheldAmount: number
+  realCirculatingSupply: number
+  decimals: number
 }

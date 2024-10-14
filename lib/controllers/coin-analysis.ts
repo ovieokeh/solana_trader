@@ -1,84 +1,50 @@
-import fetch from 'node-fetch'
-
-import { createLogger } from '../utils/logger'
-import type { EnrichedTokenData, Token } from '../types'
-import { createLimitOrder, createMarketOrder } from './trader'
 import { LAMPORTS_PER_SOL } from '@solana/web3.js'
+
+import type { Token, TokenDetailsWithExtendedPrice } from '../types'
 import { TRADE_AMOUNT_IN_SOL } from '../config/general'
+import { createLogger } from '../utils/logger'
+
+import { createLimitOrder, createMarketOrder } from './trader'
+import { fetchTokenDetails, fetchTokenPrice } from './apis/jupiter-ag'
 
 const log = createLogger('coin-analysis.ts')
-const BIRDEYE_API_KEY = process.env['BIRDEYE_API_KEY']
 
-if (!BIRDEYE_API_KEY) {
-  throw new Error('BIRDEYE_API_KEY is required but was not provided.')
-}
+function matchesBuyCriteria(
+  enrichedToken: TokenDetailsWithExtendedPrice,
+): boolean {
+  // price data comes in chunks of 15 minutes
+  // we want an increase of at least 150 points in the last 1 hour
+  return true
+  // const PRICE_DIFFERENCE_THRESHOLD = 150
 
-async function enrichTokenData(
-  address: string,
-): Promise<EnrichedTokenData | null> {
-  const options = {
-    method: 'GET',
-    headers: { 'X-API-KEY': BIRDEYE_API_KEY! },
-  }
+  // const priceData = enrichedToken.priceMovement.items
+  // const priceDataLength = priceData.length
 
-  try {
-    const response = await fetch(
-      `https://public-api.birdeye.so/defi/token_overview?address=${address}`,
-      options,
-    )
-    if (!response.ok) {
-      log(`Response not OK, status: ${response.status}`)
-      return null
-    }
-    const parsedResponse = (await response.json()) as {
-      data: EnrichedTokenData
-    }
-    return parsedResponse.data
-  } catch (error) {
-    log(`Error fetching data for address ${address}: `, error)
-    return null
-  }
-}
+  // if (priceDataLength < 5) {
+  //   return false
+  // }
 
-function matchesBuyCriteria(tokenData: EnrichedTokenData): boolean {
-  const MINIMUM_LIQUIDITY_THRESHOLD = 20_000
-  const MINIMUM_VIEW_INCREASE_PERCENT = 20
-  const MINIMUM_WALLET_INTERACTION = 200
-  const VOLUME_SPIKE_PERCENT = 200
-  const PRICE_SURGE_MIN_PERCENT = 100
+  // // we want to consider only the last 1 hour of data
+  // const lastHourData = priceData.slice(priceDataLength - 5)
+  // const priceDifference =
+  //   lastHourData[lastHourData.length - 1].value - lastHourData[0].value
+  // const priceDifferencePercentage =
+  //   (priceDifference / lastHourData[0].value) * 100
 
-  const volumeSpikeLastHour =
-    tokenData.v1hUSD > tokenData.v30mUSD * (1 + VOLUME_SPIKE_PERCENT / 100)
-  const priceSurge =
-    tokenData.priceChange30mPercent > PRICE_SURGE_MIN_PERCENT ||
-    tokenData.priceChange1hPercent > PRICE_SURGE_MIN_PERCENT
-  const liquidityCheck = tokenData.liquidity > MINIMUM_LIQUIDITY_THRESHOLD
-  const socialSentimentPositive =
-    tokenData.uniqueView30m > MINIMUM_WALLET_INTERACTION &&
-    tokenData.uniqueWallet30m > MINIMUM_VIEW_INCREASE_PERCENT
-
-  log('matchesBuyCriteria', {
-    volumeSpikeLastHour,
-    priceSurge,
-    liquidityCheck,
-    socialSentimentPositive,
-  })
-
-  return (
-    volumeSpikeLastHour &&
-    priceSurge &&
-    liquidityCheck &&
-    socialSentimentPositive
-  )
+  // return (
+  //   priceDifference > PRICE_DIFFERENCE_THRESHOLD &&
+  //   priceDifferencePercentage > 0
+  // )
 }
 
 async function processPromisingCoin(
   token: Token,
-  tokenData: EnrichedTokenData,
+  tokenData: TokenDetailsWithExtendedPrice,
 ): Promise<void> {
   try {
     const BUY_PRICE_SOL = Math.floor(TRADE_AMOUNT_IN_SOL * LAMPORTS_PER_SOL)
-    const TOKEN_PRICE = tokenData.price * Math.pow(10, tokenData.decimals)
+    const TOKEN_PRICE =
+      +tokenData.priceData.price * Math.pow(10, tokenData.decimals)
 
     const buyAmount =
       BUY_PRICE_SOL / TOKEN_PRICE > 1
@@ -164,13 +130,43 @@ export async function processTrackedCoins(
   const currentTime = Date.now()
   const oneHour = 60 * 60 * 1000 // One hour in milliseconds
 
-  const remainingCoins = trackedCoins.filter(async (token) => {
+  const remainingCoins = trackedCoins
+  for await (const token of remainingCoins) {
     log('processing token', token.address)
 
-    const tokenData = await enrichTokenData(token.address)
-    if (!tokenData) {
+    const [baseTokenDetailsQuery, tokenPriceDataQuery] =
+      await Promise.allSettled([
+        fetchTokenDetails(token.address),
+        fetchTokenPrice(token.address),
+      ])
+
+    if (baseTokenDetailsQuery.status === 'rejected') {
       log('token data could not be fetched')
-      return false // Remove token if data couldn't be fetched
+      remainingCoins.filter((coin) => coin.address !== token.address)
+
+      continue
+    }
+    if (tokenPriceDataQuery.status === 'rejected') {
+      log('token price data could not be fetched')
+      remainingCoins.filter((coin) => coin.address !== token.address)
+
+      continue
+    }
+
+    const baseTokenDetails = baseTokenDetailsQuery.value
+    const tokenPriceData = tokenPriceDataQuery.value
+    if (!baseTokenDetails || !tokenPriceData) {
+      log('token data or price data not found', {
+        baseTokenDetails,
+        tokenPriceData,
+      })
+      remainingCoins.filter((coin) => coin.address !== token.address)
+      continue
+    }
+
+    const tokenData: TokenDetailsWithExtendedPrice = {
+      ...baseTokenDetails,
+      priceData: tokenPriceData,
     }
 
     log('checking buy criteria', tokenData.symbol, tokenData.address)
@@ -179,15 +175,18 @@ export async function processTrackedCoins(
       try {
         await processPromisingCoin(token, tokenData)
         log('token matched buy criteria and processed')
-      } catch {
+      } catch (error: any) {
+        log('unhandled error processing promising coin:', error.message)
       } finally {
-        return false // Token was promising and processed, remove it
+        continue
       }
     } else {
       log('token did not match buy criteria')
-      return currentTime - token.timestamp <= oneHour // Keep token if it hasn't been there for over one hour
+      if (currentTime - token.timestamp <= oneHour) {
+        remainingCoins.push(token)
+      } // Keep token if it hasn't been there for over one hour
     }
-  })
+  }
 
   return Promise.all(remainingCoins)
 }
