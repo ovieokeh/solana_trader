@@ -19,7 +19,7 @@ export const processCieloMessage = async (
     message.senderId?.toString() === CIELO_WALLET_BOT_TELEGRAM_ID
   if (!isFromCieloBot) {
     log(`processCieloMessage: ignoring message from ${message.senderId}`)
-    // return
+    return
   }
 
   try {
